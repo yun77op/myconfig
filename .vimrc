@@ -3,14 +3,16 @@
 "
 """""""""""""""""""""""""""""""""""
 
+call pathogen#infect()
+
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => Compatibility
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 if has("win32")
-	set nocompatible
-	source $VIMRUNTIME/vimrc_example.vim
-	source $VIMRUNTIME/mswin.vim
-	behave mswin
+  set nocompatible
+  source $VIMRUNTIME/vimrc_example.vim
+  source $VIMRUNTIME/mswin.vim
+  behave mswin
 
   lang messages zh_CN.UTF-8
 
@@ -33,9 +35,19 @@ endif
 " Sets how many lines of history VIM has to remember
 set history=700
 
+syntax on
+
 " Enable filetype plugins
 filetype plugin on
 filetype indent on
+
+set foldmethod=syntax
+set foldlevelstart=1
+
+let javascript_fold=1
+let ruby_fold=1
+let sh_fold_enabled=1
+let vimsyn_folding='af'
 
 " Set to auto read when a file is changed from the outside
 set autoread
@@ -45,13 +57,13 @@ set autoread
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " With a map leader it's possible to do extra key combinations
 " like <leader>w saves the current file
-let mapleader = ","
 let g:mapleader = ","
 
 " Fast saving
 nnoremap <leader>w :w!<cr>
 
 nnoremap <leader>q :call QuickfixToggle()<cr>
+inoremap <leader>fh <esc>:call FileHeading()<cr>jA
 
 if has("unix")
     " For mac users (using the 'apple' key)
@@ -106,12 +118,13 @@ endif
 
 
 "Fast editing of .vimrc
-nnoremap <silent> <leader>ee :vsplit $MYVIMRC<cr> "$MYVIMRC is a special variable that points to your ~/.vimrc file
+nnoremap <silent> <leader>e :e $MYVIMRC<cr> "$MYVIMRC is a special variable that points to your ~/.vimrc file
+nnoremap <silent> <leader>se :vsplit $MYVIMRC<cr>
 
 "Fast reloading of the .vimrc
 nnoremap <silent> <leader>sv :source $MYVIMRC<cr>
 
-autocmd! bufwritepost _vimrc source $MYVIMRC
+autocmd! bufwritepost *vimrc source $MYVIMRC
 
 nnoremap <D-x> :tabclose<CR>
 
@@ -119,28 +132,27 @@ inoremap jk <esc>
 
 iabbrev ssig -- <cr>Yunhu Jiang<cr>yun77op@gmail.com
 
-" Deleting trailing white spaces -------------- {{{
+" Deleting trailing white spaces
 augroup deleting_trailing_ws
     autocmd!
     autocmd BufWrite *.py :call DeleteTrailingWS()
-    autocmd BufWrite *.js:call DeleteTrailingWS()
-augroup END
-" }}}
-
-augroup filetype_html
-    autocmd!
-    autocmd BufWrite,BufRead *.html :normal gg=C
-augroup END
-
-augroup iabbrev
-    autocmd FileType javascript :iabbrev <buffer> iff if ( ) {}<left><left><left><left><left>
-    autocmd FileType python     :iabbrev <buffer> iff if:<left>
+    autocmd BufWrite *.js :call DeleteTrailingWS()
 augroup END
 
 onoremap p i(
 
 onoremap in( :<c-u>normal! f(vi(<cr>
 
+" Shortcut to rapidly toggle `set list`
+nmap <leader>l :set list!<CR>
+
+" Use the same symbols as TextMate for tabstops and EOLs
+set listchars=tab:▸\ ,eol:¬
+
+nmap <leader>$ :call DeleteTrailingWS()<CR>
+nmap <leader>= :call Preserve("normal gg=G")<CR>
+
+nnoremap <leader>4 :w<cr>:make<cr><cr>:call QuickfixToggle()<cr>
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => VIM user interface
@@ -150,9 +162,9 @@ onoremap in( :<c-u>normal! f(vi(<cr>
 set wildignore=*.o,*~,*.pyc
 
 if has("win32")
-    set wildignore+=*\\tmp\\*,*.swp,*.zip,*.exe  " Windows
+    set wildignore+=*\\tmp\\*,*.swp,*.zip,*.exe,*\\.git\\*,*\\.hg\\*,*\\.svn\\*  " Windows
 else
-    set wildignore+=*/tmp/*,*.so,*.swp,*.zip     " Linux/MacOSX
+    set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*/.git/*,*/.hg/*,*/.svn/* " Linux/MacOSX
 endif
 
 " Always show current position
@@ -203,7 +215,11 @@ set noswapfile
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => Text, tab and indent related
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-set tabstop=2 shiftwidth=2 expandtab
+set tabstop=2 shiftwidth=2
+
+autocmd FileType html setlocal expandtab
+autocmd FileType css setlocal expandtab
+autocmd FileType javascript setlocal expandtab
 
 set smarttab
 
@@ -228,6 +244,33 @@ set laststatus=2
 " Format the status line
 set statusline=\ %{HasPaste()}%F%m%r%h\ %w\ \ CWD:\ %r%{getcwd()}\ \ Line:\ %l
 
+
+""""""""""""""""""""""""""""""
+" => Languages
+""""""""""""""""""""""""""""""
+
+" ### xml
+" Treat .rss files as XML
+autocmd BufNewFile,BufRead *.rss setfiletype xml
+
+
+" ### javascript
+autocmd filetype javascript setlocal makeprg=jslint\ %
+autocmd filetype javascript setlocal errorformat=%+P%f,
+																								\%A%>%\\s%\\?#%n\ %m,%Z%.%#Line\ %l\\,\ Pos\ %c,
+																								\%-G%f\ is\ OK.,%-Q
+
+" ### html
+augroup filetype_html
+	autocmd!
+	" autocmd BufWrite,BufRead *.html :normal gg=C
+	autocmd filetype html setlocal makeprg=tidy\ -iemq\ %
+augroup END
+
+augroup iabbrev
+    autocmd FileType javascript :iabbrev <buffer> iff if ( ) {}<left><left><left><left><left>
+    autocmd FileType python     :iabbrev <buffer> iff if:<left>
+augroup END
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -257,11 +300,39 @@ endfunction
 
 " Delete trailing white space on save
 func! DeleteTrailingWS()
-  exe "normal mz"
-  %s/\s\+$//ge
-  exe "normal `z"
+  call Preserve("%s/\\s\\+$//e")
 endfunc
 
+function! FileHeading()
+  let line = line(".")
+  call setline(line, "/*********************")
+  call append(line, " Description - ")
+  call append(line + 1, " Author - Yunhu Jiang")
+  call append(line + 2, " Date - " . strftime("%b %d %Y"))
+  call append(line + 3, "********************/")
+endfunction
+
+
+function! Preserve(command)
+  " Preparation: save last search, and cursor position.
+  let _s=@/
+  let l = line(".")
+  let c = col(".")
+  " Do the business:
+  execute a:command
+  " Clean up: restore previous search history, and cursor position
+  let @/=_s
+  call cursor(l, c)
+endfunction
+
+function! FormatHtml()
+	normal! ggVGJ
+	%s/>\s*</>\r</g
+	normal! gg=G
+endfunction
+
+
+	
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => Plugins
@@ -271,8 +342,12 @@ endfunc
 " Ctrlp
 "---------------
 
-set runtimepath^=~/.vim/bundle/ctrlp.vim
 let g:ctrlp_working_path_mode = 'ra'
+let g:ctrlp_custom_ignore = {
+  \ 'dir': '\v[\/]\.(node_modules)$',
+  \ 'file': '\v\.(dll)$',
+  \ }
+
 
 
 " Netrm
@@ -292,3 +367,24 @@ endif
 let Tlist_Show_One_file = 1
 let Tlist_Exit_OnlyWindow = 1
 let Tlist_Use_Right_Window = 1
+
+
+nnoremap <leader>g :set operatorfunc=GrepOperator<cr>g@
+vnoremap <leader>g :<c-u>call <SID>GrepOperator(visualmode())<cr>
+
+function! s:GrepOperator(type)
+	let saved_unnamed_register = @@
+
+	if a:type ==# 'v'
+		execute "normal! `<v`>y"
+	elseif a:type ==# 'char'
+		execute "normal! `[v`]y"
+	else
+		return
+	endif
+
+	silent excute "grep! -R " . shellescape(@@) . " ."
+	copen
+
+	let @@ = saved_unnamed_register
+endfunction
